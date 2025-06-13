@@ -1,0 +1,62 @@
+const express = require('express');
+const router = express.Router();
+const electionAdminController = require('../controllers/electionAdminController');
+const adminAuth = require('../middlewares/adminAuth');
+
+/**
+ * @route   POST /api/admin/elections
+ * @desc    Crear una nueva elección
+ * @access  Privado (Admin)
+ */
+router.post('/', adminAuth, electionAdminController.createElection);
+
+/**
+ * @route   GET /api/admin/elections
+ * @desc    Obtener todas las elecciones con filtros
+ * @access  Privado (Admin)
+ */
+router.get('/', adminAuth, electionAdminController.getElections);
+
+/**
+ * @route   GET /api/admin/elections/:id
+ * @desc    Obtener una elección por ID
+ * @access  Privado (Admin)
+ */
+router.get('/:id', adminAuth, electionAdminController.getElectionById);
+
+/**
+ * @route   PUT /api/admin/elections/:id
+ * @desc    Actualizar una elección
+ * @access  Privado (Admin)
+ */
+router.put('/:id', adminAuth, electionAdminController.updateElection);
+
+/**
+ * @route   PATCH /api/admin/elections/:id/status
+ * @desc    Cambiar estado de una elección
+ * @access  Privado (Admin)
+ */
+router.patch('/:id/status', adminAuth, electionAdminController.updateElectionStatus);
+
+/**
+ * @route   POST /api/admin/elections/:id/deploy
+ * @desc    Desplegar elección en blockchain
+ * @access  Privado (Admin)
+ */
+router.post('/:id/deploy', adminAuth, electionAdminController.deployElectionToBlockchain);
+
+/**
+ * @route   POST /api/admin/elections/:id/sync
+ * @desc    Sincronizar resultados desde blockchain
+ * @access  Privado (Admin)
+ */
+router.post('/:id/sync', adminAuth, electionAdminController.syncElectionResults);
+
+/**
+ * @route   POST /api/admin/elections/:id/publish-results
+ * @desc    Publicar resultados oficiales
+ * @access  Privado (Admin)
+ */
+router.post('/:id/publish-results', adminAuth, electionAdminController.publishElectionResults);
+
+module.exports = router;
