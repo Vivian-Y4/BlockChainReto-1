@@ -43,6 +43,12 @@ export const AdminProvider = ({ children }) => {
         if (!('canCreateElection' in permissions)) {
           permissions.canCreateElection = true; // Default to true if not set
         }
+        if (!('canManageSettings' in permissions)) {
+          permissions.canManageSettings = true; // Default to true if not set
+        }
+        if (!('canViewActivity' in permissions)) {
+          permissions.canViewActivity = true; // Default to true if not set
+        }
         setAdminDetails(
           result.admin.name,
           result.admin.username,
@@ -98,30 +104,6 @@ export const AdminProvider = ({ children }) => {
       return { success: false, error: error.message || 'Error de autenticación' };
     }
   };
-
-  // // Iniciar sesión con MetaMask
-  // const adminLoginWithMetaMask = async () => {
-  //   try {
-  //     const result = await adminService.loginWithMetaMask();
-      
-  //     if (!result.success) {
-  //       return { success: false, error: result.error };
-  //     }
-      
-  //     setAdminDetails(
-  //       result.admin.name,
-  //       result.admin.username,
-  //       result.address || '',
-  //       result.admin.permissions || {}
-  //     );
-  //     setIsAdminAuthenticated(true);
-      
-  //     return { success: true };
-  //   } catch (error) {
-  //     console.error('Error en login de administrador con MetaMask:', error);
-  //     return { success: false, error: error.message || 'Error de autenticación' };
-  //   }
-  // };
 
   // Cerrar sesión de administrador
   const adminLogout = () => {

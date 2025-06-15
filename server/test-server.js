@@ -56,7 +56,9 @@ app.post('/api/admin/login', (req, res) => {
           canManageVoters: true,
           canFinalizeResults: true,
           canViewReports: true,
-          canManageAdmins: true
+          canManageAdmins: true,
+          canManageSettings: true,
+          canViewActivity: true
         }
       }
     });

@@ -1,5 +1,5 @@
 import React, { useContext } from 'react';
-import { Navigate } from 'react-router-dom';
+import { Navigate, useLocation } from 'react-router-dom';
 import AdminContext from '../../context/AdminContext';
 import { Spinner, Container } from 'react-bootstrap';
 
@@ -11,7 +11,9 @@ import { Spinner, Container } from 'react-bootstrap';
  */
 const AdminRoute = ({ element }) => {
   const { isAdminAuthenticated, adminLoading } = useContext(AdminContext);
+  const location = useLocation();
 
+  // Mientras carga el contexto, muestra spinner (¡esto evita redirecciones incorrectas!)
   if (adminLoading) {
     return (
       <Container className="py-5 text-center">
@@ -20,11 +22,12 @@ const AdminRoute = ({ element }) => {
     );
   }
 
+  // Si no está autenticado como admin, redirige al login de admin
   if (!isAdminAuthenticated) {
-    // Redirige al login de admin si no está autenticado
-    return <Navigate to="/admin-login" />;
+    return <Navigate to="/admin-login" state={{ from: location }} replace />;
   }
 
+  // Renderiza el componente protegido
   return element;
 };
 

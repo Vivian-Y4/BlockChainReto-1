@@ -1,16 +1,15 @@
 import React, { useState, useEffect, useContext } from 'react';
 import { Container, Card, Table, Form, Button, Alert, Spinner, InputGroup, Badge, Modal, Breadcrumb } from 'react-bootstrap';
-import { useNavigate, useParams, Link } from 'react-router-dom';
+import { useParams, Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'react-toastify';
-import AuthContext from '../../context/AuthContext';
+import AdminContext from '../../context/AdminContext';
 import { isElectionActive, hasElectionEnded } from '../../utils/contractUtils';
 
 const ManageVoters = () => {
   const { t } = useTranslation();
   const { electionId } = useParams();
-  const { isAuthenticated, isAdmin } = useContext(AuthContext);
-  const navigate = useNavigate();
+  const { isAdminAuthenticated, adminPermissions, adminLoading } = useContext(AdminContext);
 
   const [election, setElection] = useState(null);
   const [voters, setVoters] = useState([]);
@@ -32,7 +31,7 @@ const ManageVoters = () => {
       setError('');
       // Fetch election details
       const electionResponse = await fetch(
-        `${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/api/elections/${electionId}`,
+        `${process.env.REACT_APP_API_URL || 'http://localhost:3333'}/api/elections/${electionId}`,
         {
           headers: {
             'x-auth-token': localStorage.getItem('adminToken')
@@ -46,7 +45,7 @@ const ManageVoters = () => {
       setElection(electionData.election);
       // Fetch voters for this election
       const votersResponse = await fetch(
-        `${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/api/elections/${electionId}/voters`,
+        `${process.env.REACT_APP_API_URL || 'http://localhost:3333'}/api/elections/${electionId}/voters`,
         {
           headers: {
             'x-auth-token': localStorage.getItem('adminToken')
@@ -60,7 +59,6 @@ const ManageVoters = () => {
       setVoters(votersData.voters || []);
       setFilteredVoters(votersData.voters || []);
     } catch (error) {
-      console.error('Error fetching election voters:', error);
       setError(error.message || t('admin.voters.fetch_error'));
       toast.error(error.message || t('admin.voters.fetch_error'));
     } finally {
@@ -69,20 +67,17 @@ const ManageVoters = () => {
   };
 
   useEffect(() => {
-    // Redirect if not authenticated or not admin
-    if (!isAuthenticated || !isAdmin) {
-      navigate('/');
-      return;
+    if (isAdminAuthenticated && adminPermissions) {
+      fetchElectionAndVoters();
     }
-    fetchElectionAndVoters();
-  }, [isAuthenticated, isAdmin, navigate, electionId]);
+  }, [isAdminAuthenticated, adminPermissions, electionId]);
 
   useEffect(() => {
     // Filter voters based on search term
     if (searchTerm.trim() === '') {
       setFilteredVoters(voters);
     } else {
-      const filtered = voters.filter(voter => 
+      const filtered = voters.filter(voter =>
         voter.address.toLowerCase().includes(searchTerm.toLowerCase()) ||
         (voter.name && voter.name.toLowerCase().includes(searchTerm.toLowerCase()))
       );
@@ -102,7 +97,7 @@ const ManageVoters = () => {
     try {
       setActionLoading(true);
       const response = await fetch(
-        `${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/api/elections/${electionId}/voters`,
+        `${process.env.REACT_APP_API_URL || 'http://localhost:3333'}/api/elections/${electionId}/voters`,
         {
           method: 'POST',
           headers: {
@@ -123,7 +118,6 @@ const ManageVoters = () => {
       setShowAddModal(false);
       fetchElectionAndVoters();
     } catch (error) {
-      console.error('Error adding voter:', error);
       toast.error(error.message || t('admin.voters.add_error'));
     } finally {
       setActionLoading(false);
@@ -146,7 +140,7 @@ const ManageVoters = () => {
     try {
       setActionLoading(true);
       const response = await fetch(
-        `${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/api/elections/${electionId}/voters/bulk`,
+        `${process.env.REACT_APP_API_URL || 'http://localhost:3333'}/api/elections/${electionId}/voters/bulk`,
         {
           method: 'POST',
           headers: {
@@ -167,7 +161,6 @@ const ManageVoters = () => {
       setShowBulkModal(false);
       fetchElectionAndVoters();
     } catch (error) {
-      console.error('Error adding voters in bulk:', error);
       toast.error(error.message || t('admin.voters.bulk_add_error'));
     } finally {
       setActionLoading(false);
@@ -184,7 +177,7 @@ const ManageVoters = () => {
     try {
       setActionLoading(true);
       const response = await fetch(
-        `${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/api/elections/${electionId}/voters/${voterToRemove.address}`,
+        `${process.env.REACT_APP_API_URL || 'http://localhost:3333'}/api/elections/${electionId}/voters/${voterToRemove.address}`,
         {
           method: 'DELETE',
           headers: {
@@ -201,14 +194,14 @@ const ManageVoters = () => {
       setVoterToRemove(null);
       fetchElectionAndVoters();
     } catch (error) {
-      console.error('Error removing voter:', error);
       toast.error(error.message || t('admin.voters.remove_error'));
     } finally {
       setActionLoading(false);
     }
   };
 
-  if (loading) {
+  // Si está cargando, muestra spinner
+  if (adminLoading || loading) {
     return (
       <Container className="my-5 text-center">
         <Spinner animation="border" role="status" variant="primary">
@@ -217,6 +210,11 @@ const ManageVoters = () => {
         <p className="mt-3">{t('admin.voters.loading')}</p>
       </Container>
     );
+  }
+
+  // Si no eres admin o no estás autenticado, no muestres nada (la protección ya la hace AdminRoute)
+  if (!isAdminAuthenticated || !adminPermissions) {
+    return null;
   }
 
   // Determine if we can modify voters (only before election starts)
@@ -253,7 +251,7 @@ const ManageVoters = () => {
             {election ? election.title : ''} - {t('admin.voters.registered_count', { count: voters.length })}
           </p>
         </div>
-        <Button variant="outline-secondary" onClick={() => navigate('/admin')}>
+        <Button variant="outline-secondary" as={Link} to="/admin">
           <i className="fas fa-arrow-left me-2"></i>
           {t('common.back')}
         </Button>
@@ -368,8 +366,8 @@ const ManageVoters = () => {
           {filteredVoters.length > 0 && (
             <div className="d-flex justify-content-between align-items-center mt-3">
               <small className="text-muted">
-                {searchTerm ? 
-                  t('admin.voters.showing_filtered', { count: filteredVoters.length, total: voters.length }) : 
+                {searchTerm ?
+                  t('admin.voters.showing_filtered', { count: filteredVoters.length, total: voters.length }) :
                   t('admin.voters.showing_all', { count: voters.length })}
               </small>
               <Button
@@ -421,9 +419,9 @@ const ManageVoters = () => {
         </Modal.Footer>
       </Modal>
       {/* Bulk Add Voters Modal */}
-      <Modal 
-        show={showBulkModal} 
-        onHide={() => !actionLoading && setShowBulkModal(false)} 
+      <Modal
+        show={showBulkModal}
+        onHide={() => !actionLoading && setShowBulkModal(false)}
         centered
         size="lg"
       >
@@ -463,8 +461,8 @@ const ManageVoters = () => {
         </Modal.Footer>
       </Modal>
       {/* Remove Voter Confirmation Modal */}
-      <Modal 
-        show={showRemoveModal} 
+      <Modal
+        show={showRemoveModal}
         onHide={() => !actionLoading && setShowRemoveModal(false)}
         centered
       >

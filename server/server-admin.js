@@ -50,12 +50,14 @@ const AdminSchema = new mongoose.Schema({
   },
   permissions: {
     canViewDashboard: { type: Boolean, default: true },
-    canCreateElections: { type: Boolean, default: false },
-    canManageElections: { type: Boolean, default: false },
-    canManageVoters: { type: Boolean, default: false },
-    canFinalizeResults: { type: Boolean, default: false },
+    canCreateElections: { type: Boolean, default: true },
+    canManageElections: { type: Boolean, default: true },
+    canManageVoters: { type: Boolean, default: true },
+    canFinalizeResults: { type: Boolean, default: true },
     canViewReports: { type: Boolean, default: true },
-    canManageAdmins: { type: Boolean, default: false }
+    canManageAdmins: { type: Boolean, default: true },
+    canManageSettings: { type: Boolean, default: true },
+    canViewActivity: { type: Boolean, default: true }
   },
   createdAt: {
     type: Date,

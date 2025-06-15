@@ -127,7 +127,9 @@ const createInitialAdmin = async () => {
           canManageVoters: true,
           canFinalizeResults: true,
           canViewReports: true,
-          canManageAdmins: true
+          canManageAdmins: true,
+          canManageSettings: true,
+          canViewActivity: true
         }
       };
       const admin = new Admin(adminData);

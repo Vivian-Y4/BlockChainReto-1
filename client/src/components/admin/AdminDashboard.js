@@ -15,14 +15,13 @@ import {
   Modal,
   Form,
 } from "react-bootstrap"
-import { Link, useNavigate } from "react-router-dom"
+import { useNavigate } from "react-router-dom"
 import AdminContext from "../../context/AdminContext"
 import { formatTimestamp, formatAddress, isElectionActive, hasElectionEnded } from "../../utils/contractUtils"
 import { toast } from "react-toastify"
 import StatsDashboard from "./stats/StatsDashboard"
-import VotingTokenABI from "../../abis/VotingToken.json"
-import { getWeb3 } from "../../utils/web3Utils"
 import axios from "axios"
+import AssignTokens from './AssignTokens';
 
 const AdminDashboard = () => {
   useEffect(() => {
@@ -44,20 +43,19 @@ const AdminDashboard = () => {
   const { isAdminAuthenticated, adminPermissions, adminLogout } = useContext(AdminContext)
   const navigate = useNavigate()
   const [users, setUsers] = useState([])
-  const [adminAddress, setAdminAddress] = useState("")
-  const [tokenLoading, setTokenLoading] = useState(false)
   const [showCreateElectionModal, setShowCreateElectionModal] = useState(false)
   const [newElectionTitle, setNewElectionTitle] = useState("")
   const [newElectionDescription, setNewElectionDescription] = useState("")
   const [newElectionStartDate, setNewElectionStartDate] = useState("")
   const [newElectionEndDate, setNewElectionEndDate] = useState("")
   const [newElectionLevel, setNewElectionLevel] = useState("")
-  const [newElectionCandidates, setNewElectionCandidates] = useState([{ name: "", description: "" }])
 
   // Verificar permisos para habilitar botones
   const canCreateElection = adminPermissions && adminPermissions.canCreateElection === true
   const canManageElections = adminPermissions && adminPermissions.canManageElections === true
   const canFinalizeResults = adminPermissions && adminPermissions.canFinalizeResults === true
+  const canManageSettings = adminPermissions && adminPermissions.canManageSettings === true
+  const canViewActivity = adminPermissions && adminPermissions.canViewActivity === true
 
   // Fetch elections from backend
   const fetchElections = useCallback(async () => {
@@ -86,9 +84,6 @@ const AdminDashboard = () => {
       const token = localStorage.getItem("adminToken")
       const res = await axios.get("/api/admin/statistics/voters", {
         headers: { 'x-auth-token': token },
-        headers: {
-          "x-auth-token": localStorage.getItem("adminToken"),
-        },
       })
       setVoterStats(res.data.data || { totalRegistered: 0, totalVoted: 0 })
     } catch (error) {
@@ -102,14 +97,9 @@ const AdminDashboard = () => {
   useEffect(() => {
     fetchUsers()
     fetchVoterStats()
-    getAdminAddress()
   }, [isAdminAuthenticated, adminPermissions, navigate, fetchElections, fetchVoterStats])
 
-  useEffect(() => {
-    console.log("Permisos de administración:", adminPermissions)
-  }, [adminPermissions])
-
-  // Fetch connected wallet users (if relevant)
+  // Fetch connected wallet users
   const fetchUsers = async () => {
     try {
       const res = await fetch("/api/wallet/list")
@@ -118,39 +108,6 @@ const AdminDashboard = () => {
     } catch (error) {
       toast.error("Error cargando usuarios conectados")
     }
-  }
-
-  // Get admin wallet address (if relevant)
-  const getAdminAddress = async () => {
-    try {
-      const web3 = await getWeb3()
-      const accounts = await web3.eth.getAccounts()
-      setAdminAddress(accounts[0])
-    } catch (error) {
-      setAdminAddress("")
-    }
-  }
-
-  const VOTING_TOKEN_ADDRESS = "0x5FbDB2315678afecb367f032d93F642f64180aa3"
-
-  const assignToken = async (userAddress) => {
-    setTokenLoading(true)
-    try {
-      const web3 = await getWeb3()
-      const contract = new web3.eth.Contract(VotingTokenABI, VOTING_TOKEN_ADDRESS)
-      await contract.methods.transfer(userAddress, web3.utils.toWei("1", "ether")).send({ from: adminAddress })
-      // Marca en backend que ese usuario ya tiene token
-      await fetch("/api/wallet/mark-token", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ address: userAddress }),
-      })
-      fetchUsers()
-      toast.success("Token asignado correctamente")
-    } catch (error) {
-      toast.error("Error asignando token: " + (error.message || error))
-    }
-    setTokenLoading(false)
   }
 
   // Redirección y permisos
@@ -235,8 +192,7 @@ const AdminDashboard = () => {
   }
 
   const handleCreateElection = async () => {
-    const validCandidatesCount = newElectionCandidates.filter(c => c.name.trim() !== "").length;
-    if (!newElectionTitle || !newElectionDescription || !newElectionStartDate || !newElectionEndDate || !newElectionLevel || validCandidatesCount === 0) {
+    if (!newElectionTitle || !newElectionDescription || !newElectionStartDate || !newElectionEndDate || !newElectionLevel) {
       toast.error("Por favor completa todos los campos antes de crear la elección.");
       return;
     }
@@ -249,26 +205,27 @@ const AdminDashboard = () => {
         navigate("/admin/login")
         return
       }
-      // Filtrar candidatos vacíos
-      const cleanedCandidates = newElectionCandidates
-        .filter(c => c.name.trim() !== "")
-        .map(c => ({ name: c.name.trim(), description: c.description.trim() }));
-
+  
+      // Convert dates to Unix timestamps (seconds)
+      const startTimestamp = Math.floor(new Date(newElectionStartDate).getTime() / 1000)
+      const endTimestamp = Math.floor(new Date(newElectionEndDate).getTime() / 1000)
+  
       const payload = {
         title: newElectionTitle.trim(),
         description: newElectionDescription.trim(),
-        startDate: newElectionStartDate,
-        endDate: newElectionEndDate,
+        startDate: startTimestamp,
+        endDate: endTimestamp,
         level: newElectionLevel.toLowerCase(),
-        candidates: cleanedCandidates,
       };
-      const contractAddr = process.env.REACT_APP_VOTING_SYSTEM_CONTRACT_ADDRESS;
+      const contractAddr = process.env.REACT_APP_VOTING_ADDRESS;
       if (contractAddr) payload.contractAddress = contractAddr;
-
+  
+      console.log("Election payload:", payload);
+  
       const response = await axios.post("/api/admin/elections", payload, {
         headers: { "x-auth-token": token },
       })
-
+  
       if (response?.status && (response.status === 201 || response.status === 200)) {
         toast.success("Elección creada correctamente")
         setNewElectionTitle("")
@@ -276,7 +233,6 @@ const AdminDashboard = () => {
         setNewElectionStartDate("")
         setNewElectionEndDate("")
         setNewElectionLevel("")
-        setNewElectionCandidates([{ name: "", description: "" }])
         setShowCreateElectionModal(false)
         await fetchElections() // Refrescar la lista de elecciones
       } else {
@@ -288,23 +244,6 @@ const AdminDashboard = () => {
     } finally {
       setActionLoading(false)
     }
-  }
-
-  const addCandidate = () => {
-    setNewElectionCandidates([...newElectionCandidates, { name: "", description: "" }])
-  }
-
-  const removeCandidate = (index) => {
-    setNewElectionCandidates(newElectionCandidates.filter((candidate, i) => i !== index))
-  }
-
-  const handleCandidateChange = (index, field, value) => {
-    setNewElectionCandidates(newElectionCandidates.map((candidate, i) => {
-      if (i === index) {
-        return { ...candidate, [field]: value }
-      }
-      return candidate
-    }))
   }
 
   return (
@@ -454,8 +393,7 @@ const AdminDashboard = () => {
               <Row>
                 <Col md={3} className="mb-3 mb-md-0">
                   <Button
-                    as={Link}
-                    to="/admin/voters"
+                    onClick={() => navigate('/admin/voters')}
                     variant="outline-primary"
                     className="w-100 py-3"
                     disabled={!adminPermissions.canManageVoters}
@@ -466,11 +404,9 @@ const AdminDashboard = () => {
                 </Col>
                 <Col md={3} className="mb-3 mb-md-0">
                   <Button
-                    as={Link}
-                    to="/admin/candidates"
+                    onClick={() => navigate('/admin/candidates')}
                     variant="outline-primary"
                     className="w-100 py-3"
-                    disabled={!adminPermissions.canManageCandidates}
                   >
                     <i className="fas fa-user-tie mb-2 fa-2x"></i>
                     <div>Gestión de Candidatos</div>
@@ -478,11 +414,10 @@ const AdminDashboard = () => {
                 </Col>
                 <Col md={3} className="mb-3 mb-md-0">
                   <Button
-                    as={Link}
-                    to="/admin/settings"
+                     onClick={() => navigate('/admin/configuration')}
                     variant="outline-primary"
                     className="w-100 py-3"
-                    disabled={!adminPermissions.canManageSettings}
+                    disabled={!canManageSettings}
                   >
                     <i className="fas fa-cogs mb-2 fa-2x"></i>
                     <div>Configuración</div>
@@ -490,11 +425,10 @@ const AdminDashboard = () => {
                 </Col>
                 <Col md={3}>
                   <Button
-                    as={Link}
-                    to="/admin/activity"
+                    onClick={() => navigate('/admin/activity')}
                     variant="outline-primary"
                     className="w-100 py-3"
-                    disabled={!adminPermissions.canViewActivity}
+                    disabled={!canViewActivity}
                   >
                     <i className="fas fa-history mb-2 fa-2x"></i>
                     <div>Registro de Actividad</div>
@@ -508,15 +442,15 @@ const AdminDashboard = () => {
               <h5 className="mb-0">Usuarios conectados (Wallets)</h5>
             </Card.Header>
             <Card.Body>
+              <AssignTokens tokenAddress={process.env.REACT_APP_TOKEN_ADDRESS} onTokensAssigned={fetchUsers} />
               {users.length === 0 ? (
-                <div className="text-muted">No hay usuarios conectados aún.</div>
+                <div className="text-muted mt-3">No hay usuarios conectados aún.</div>
               ) : (
-                <Table responsive hover>
+                <Table responsive hover className="mt-3">
                   <thead>
                     <tr>
                       <th>Dirección</th>
                       <th>¿Tiene token?</th>
-                      <th>Acción</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -524,19 +458,6 @@ const AdminDashboard = () => {
                       <tr key={u.address}>
                         <td>{formatAddress ? formatAddress(u.address) : u.address}</td>
                         <td>{u.hasToken ? <Badge bg="success">Sí</Badge> : <Badge bg="secondary">No</Badge>}</td>
-                        <td>
-                          {!u.hasToken && (
-                            <Button
-                              size="sm"
-                              variant="primary"
-                              disabled={tokenLoading}
-                              onClick={() => assignToken(u.address)}
-                            >
-                              Asignar token
-                            </Button>
-                          )}
-                          {u.hasToken && <span>✔️</span>}
-                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -632,34 +553,12 @@ const AdminDashboard = () => {
                 <option value="municipal">Municipal</option>
               </Form.Control>
             </Form.Group>
-            <Form.Group controlId="formElectionCandidates">
-              <Form.Label>Candidatos</Form.Label>
-              {newElectionCandidates.map((candidate, index) => (
-                <div key={index} className="d-flex mb-2">
-                  <Form.Control
-                    type="text"
-                    placeholder="Nombre del Candidato"
-                    value={candidate.name}
-                    onChange={(e) => handleCandidateChange(index, 'name', e.target.value)}
-                    className="me-2"
-                  />
-                  <Form.Control
-                    type="text"
-                    placeholder="Descripción"
-                    value={candidate.description}
-                    onChange={(e) => handleCandidateChange(index, 'description', e.target.value)}
-                    className="me-2"
-                  />
-                  <Button variant="danger" onClick={() => removeCandidate(index)}>-</Button>
-                </div>
-              ))}
-              <Button variant="primary" onClick={addCandidate}>Añadir Candidato</Button>
-            </Form.Group>
+            {/* Candidate fields removed: candidate management is now a separate workflow */}
             <Form.Group controlId="formElectionContractAddress">
               <Form.Label className="d-none">Dirección del Contrato</Form.Label>
               <Form.Control
                 type="hidden"
-                value={process.env.REACT_APP_VOTING_SYSTEM_CONTRACT_ADDRESS}
+                value={process.env.REACT_APP_VOTING_ADDRESS}
               />
             </Form.Group>
           </Form>
@@ -671,7 +570,14 @@ const AdminDashboard = () => {
           <Button
             variant="primary"
             onClick={handleCreateElection}
-            disabled={actionLoading || !newElectionTitle || !newElectionDescription || !newElectionStartDate || !newElectionEndDate || !newElectionLevel || newElectionCandidates.filter(c=>c.name.trim()!=="").length===0}
+            disabled={
+              actionLoading ||
+              !newElectionTitle ||
+              !newElectionDescription ||
+              !newElectionStartDate ||
+              !newElectionEndDate ||
+              !newElectionLevel
+            }
           >
             {actionLoading ? (
               <>
