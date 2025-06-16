@@ -17,7 +17,7 @@ const userWalletRoutes = require('./routes/userWallet');
 // ...importa aquí otras rutas si las tienes...
 
 // Conexión a MongoDB
-const mongoURI = process.env.MONGODB_URI || 'mongodb://localhost:27017/voting-platform';
+const mongoURI = process.env.MONGODB_URI || 'mongodb+srv://nateravivi:7l8FK20TtFeWhzeP@cluster0.vrk8zps.mongodb.net/voting-platform';
 mongoose.connect(mongoURI, { useNewUrlParser: true, useUnifiedTopology: true })
   .then(() => console.log('MongoDB connected'))
   .catch(err => {

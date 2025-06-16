@@ -3,7 +3,7 @@ const mongoose = require('mongoose');
 const connectDB = async () => {
   try {
     // Usar MONGO_URI en lugar de MONGODB_URI para coincidir con el archivo .env
-    const mongoUri = process.env.MONGO_URI || 'mongodb+srv://nateravivi:avivi:<db_password>@cluster0.vrk8zps.mongodb.net/';
+    const mongoUri = process.env.MONGO_URI || 'mongodb+srv://nateravivi:7l8FK20TtFeWhzeP@cluster0.vrk8zps.mongodb.net/voting-platform';
     console.log(`Intentando conectar a MongoDB con URI: ${mongoUri}`);
     const conn = await mongoose.connect(mongoUri, {
       useNewUrlParser: true,

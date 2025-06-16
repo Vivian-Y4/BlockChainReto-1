@@ -102,7 +102,7 @@ function App() {
       }
     }
   }, []);
-  const handleLoginSuccess = useCallback(async (address, provider, signer) => {
+  const handleLoginSuccess = useCallback(async (address, provider, signer, cedula, province) => {
     setLoading(true);
     setProvider(provider);
     setSigner(signer);

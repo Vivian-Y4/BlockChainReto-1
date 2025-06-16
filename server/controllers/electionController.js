@@ -39,18 +39,25 @@ const getElections = async (req, res, next) => {
   try {
     const { provider, contractABI, contractAddress } = setupProvider();
     const contract = new ethers.Contract(contractAddress, contractABI, provider);
-    
+
     // Obtener el conteo de elecciones
     const electionCount = await contract.electionCount();
-    
+
+    // Determinar provincia del usuario (si autenticado)
+    let userProvince = null;
+    if (req.user && req.user.province) {
+      userProvince = req.user.province.trim().toLowerCase();
+    }
+
     const elections = [];
     for (let i = 0; i < electionCount; i++) {
       try {
         const election = await contract.getElectionSummary(i);
-        
+
         // Buscar metadata adicional en MongoDB
         let metadata = {};
         const electionMeta = await ElectionMeta.findOne({ electionId: i });
+        let location = null;
         if (electionMeta) {
           metadata = {
             category: electionMeta.category,
@@ -59,26 +66,41 @@ const getElections = async (req, res, next) => {
             viewCount: electionMeta.viewCount,
             coverImage: electionMeta.coverImage
           };
+          location = electionMeta.location ? electionMeta.location.trim().toLowerCase() : null;
         }
-        
-        elections.push({
-          id: election.id.toString(),
-          title: election.title,
-          description: election.description,
-          startTime: election.startTime.toString(),
-          endTime: election.endTime.toString(),
-          isActive: election.isActive,
-          candidateCount: election.candidateCount.toString(),
-          totalVotes: election.totalVotes.toString(),
-          resultsFinalized: election.resultsFinalized,
-          metadata
-        });
+
+        // Lógica de filtrado:
+        // - Si la elección es nacional (location: 'nacional', 'national', etc), mostrar a todos
+        // - Si la elección es regional, solo mostrar si coincide con la provincia del usuario
+        let isNational = location === 'nacional' || location === 'national';
+        let isVisible = false;
+        if (isNational) {
+          isVisible = true;
+        } else if (location && userProvince) {
+          isVisible = (location === userProvince);
+        }
+
+        // Si la elección no es nacional, solo mostrar si la provincia coincide
+        if (isVisible) {
+          elections.push({
+            id: election.id.toString(),
+            title: election.title,
+            description: election.description,
+            startTime: election.startTime.toString(),
+            endTime: election.endTime.toString(),
+            isActive: election.isActive,
+            candidateCount: election.candidateCount.toString(),
+            totalVotes: election.totalVotes.toString(),
+            resultsFinalized: election.resultsFinalized,
+            metadata
+          });
+        }
       } catch (error) {
         console.error(`Error obteniendo datos de elección ${i}:`, error);
         // Continuamos con la siguiente elección si hay error en una
       }
     }
-    
+
     res.json({
       success: true,
       elections

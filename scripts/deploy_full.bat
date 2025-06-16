@@ -76,7 +76,7 @@ echo 4. Configurando variables de entorno...
 :: Crear archivos .env si no existen
 if not exist server\.env (
     echo Creando archivo .env para el servidor...
-    echo MONGO_URI=mongodb://localhost:27017/blockchain-voting > server\.env
+    echo MONGO_URI=mongodb+srv://nateravivi:7l8FK20TtFeWhzeP@cluster0.vrk8zps.mongodb.net/voting-platform > server\.env
     echo ETHEREUM_RPC_URL=http://localhost:8545 >> server\.env
     echo CONTRACT_ADDRESS=%CONTRACT_ADDRESS% >> server\.env
     echo ADMIN_PRIVATE_KEY=%ADMIN_PRIVATE_KEY% >> server\.env

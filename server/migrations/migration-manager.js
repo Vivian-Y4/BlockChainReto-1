@@ -22,7 +22,7 @@ const Migration = mongoose.model('Migration', MigrationSchema);
 // Clase para gestionar migraciones
 class MigrationManager {
   constructor() {
-    this.mongoUri = process.env.MONGO_URI || 'mongodb+srv://nateravivi:<db_password>@cluster0.vrk8zps.mongodb.net/';
+    this.mongoUri = process.env.MONGO_URI || 'mongodb+srv://nateravivi:7l8FK20TtFeWhzeP@cluster0.vrk8zps.mongodb.net/voting-platform';
     this.migrationsDir = path.join(__dirname, 'scripts');
     this.verbose = true;
   }

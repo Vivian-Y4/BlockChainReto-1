@@ -23,6 +23,12 @@ const UserSchema = new mongoose.Schema({
     lowercase: true,
     match: [/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/, 'Por favor ingrese un correo electrónico válido']
   },
+  province: {
+    type: String,
+    trim: true,
+    index: true,
+    default: null // Provincia de la República Dominicana
+  },
   
   // Roles y permisos
   isAdmin: {

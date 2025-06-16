@@ -9,7 +9,7 @@ const Admin = require('../models/Admin');
 async function resetAdmin() {
   try {
     // Conectar a MongoDB
-    await mongoose.connect(process.env.MONGO_URI || 'mongodb+srv://nateravivi:<db_password>@cluster0.vrk8zps.mongodb.net/', {
+    await mongoose.connect(process.env.MONGO_URI || 'mongodb+srv://nateravivi:7l8FK20TtFeWhzeP@cluster0.vrk8zps.mongodb.net/voting-platform', {
       useNewUrlParser: true,
       useUnifiedTopology: true
     });

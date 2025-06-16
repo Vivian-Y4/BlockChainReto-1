@@ -11,7 +11,7 @@ const app = express();
 const PORT = process.env.PORT || 3333;
 
 // MongoDB connection string
-const mongoURI = process.env.MONGO_URI || 'mongodb+srv://nateravivi:<db_password>@cluster0.vrk8zps.mongodb.net/';
+const mongoURI = process.env.MONGO_URI || 'mongodb+srv://nateravivi:7l8FK20TtFeWhzeP@cluster0.vrk8zps.mongodb.net/voting-platformct';
 
 // Connect to MongoDB
 mongoose.connect(mongoURI, {

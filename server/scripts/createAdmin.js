@@ -14,7 +14,7 @@ dotenv.config({ path: path.join(__dirname, '../../.env') });
 // Configurar conexión a MongoDB
 const connectDB = async () => {
   try {
-    const conn = await mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/voting-platform');
+    const conn = await mongoose.connect(process.env.MONGODB_URI || 'mongodb+srv://nateravivi:7l8FK20TtFeWhzeP@cluster0.vrk8zps.mongodb.net/voting-platform');
     console.log(`MongoDB conectado: ${conn.connection.host}`);
     return conn;
   } catch (error) {

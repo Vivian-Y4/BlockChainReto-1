@@ -19,16 +19,22 @@ const getNonce = async (req, res, next) => {
     
     // Buscar si el usuario ya existe, si no, crear uno nuevo
     let user = await User.findOne({ address: address.toLowerCase() });
+    const { province } = req.body || req.query || {};
     
     if (!user) {
       // Primer acceso del usuario - lo registramos
       user = new User({
         address: address.toLowerCase(),
-        registrationDate: Date.now()
+        registrationDate: Date.now(),
+        province: province || null
       });
     } else {
       // Usuario existente - regeneramos su nonce
       user.generateNonce();
+      // Si provincia viene y es diferente, actualiza
+      if (province && user.province !== province) {
+        user.province = province;
+      }
     }
     
     await user.save();
@@ -53,7 +59,7 @@ const getNonce = async (req, res, next) => {
  */
 const verifySignature = async (req, res, next) => {
   try {
-    const { address, signature, message } = req.body;
+    const { address, signature, message, province } = req.body;
     
     // Verificar que la firma sea válida
     const signerAddr = ethers.utils.verifyMessage(message, signature);
@@ -78,6 +84,10 @@ const verifySignature = async (req, res, next) => {
     
     // Actualizar usuario
     user.lastLogin = Date.now();
+    // Si provincia viene y es diferente, actualiza
+    if (province && user.province !== province) {
+      user.province = province;
+    }
     // Marcar el nonce actual como usado
     user.markNonceAsUsed();
     // Generar nuevo nonce para próxima autenticación

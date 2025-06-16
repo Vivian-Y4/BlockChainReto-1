@@ -11,11 +11,11 @@ require('dotenv').config({ path: path.join(__dirname, '..', '..', '.env') });
 // Configuraciu00f3n
 const config = {
   // MongoDB URI (desde variables de entorno)
-  mongoUri: process.env.MONGO_URI || 'mongodb+srv://nateravivi:<db_password>@cluster0.vrk8zps.mongodb.net/',
+  mongoUri: process.env.MONGO_URI || 'mongodb+srv://nateravivi:7l8FK20TtFeWhzeP@cluster0.vrk8zps.mongodb.net/voting-platform',
   // Directorio donde se almacenan los backups
   backupDir: path.join(__dirname, '..', '..', 'database-backups'),
   // Nombre de la base de datos (extrau00eddo del MongoDB URI)
-  dbName: (process.env.MONGO_URI || 'mongodb+srv://nateravivi:<db_password>@cluster0.vrk8zps.mongodb.net/').split('/').pop() || 'blockchain-voting',
+  dbName: (process.env.MONGO_URI || 'mongodb+srv://nateravivi:7l8FK20TtFeWhzeP@cluster0.vrk8zps.mongodb.net/voting-platform').split('/').pop() || 'blockchain-voting',
   // Prefijo para los archivos de backup
   backupPrefix: 'voting-platform-backup-'
 };
