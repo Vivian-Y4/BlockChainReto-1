@@ -53,15 +53,25 @@ const Dashboard = () => {
           totalVoters: 0
         });
 
-        // Fetch recent activity
-        const activityResponse = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/api/activity`);
-        const activityData = await activityResponse.json();
-        
-        if (!activityData.success) {
-          throw new Error(activityData.message || 'Failed to fetch activity');
+        // Fetch recent activity from unified admin endpoint
+        const apiUrl = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+        const adminToken = localStorage.getItem('adminToken');
+        let activityData = null;
+        if (adminToken) {
+          const response = await fetch(`${apiUrl}/api/admin/activity?limit=5&page=1`, {
+            headers: {
+              'x-auth-token': adminToken
+            }
+          });
+          activityData = await response.json();
+          if (!activityData.success) {
+            throw new Error(activityData.message || 'Failed to fetch activity');
+          }
+          // The API returns data in `data` array
+          setRecentActivity(activityData.data || []);
+        } else {
+          setRecentActivity([]);
         }
-        
-        setRecentActivity(activityData.activities || []);
 
       } catch (error) {
         console.error('Error fetching dashboard data:', error);
