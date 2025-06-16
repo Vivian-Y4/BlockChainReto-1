@@ -11,7 +11,7 @@ require('dotenv').config({ path: path.join(__dirname, '..', '..', '.env') });
 
 // Configuraciu00f3n
 const config = {
-  mongoUri: process.env.MONGO_URI || 'mongodb://localhost:27017/voting-platform',
+  mongoUri: process.env.MONGO_URI || 'mongodb+srv://nateravivi:<db_password>@cluster0.vrk8zps.mongodb.net/',
   // Umbral de utilizaciu00f3n de u00edndices para considerar eliminar un u00edndice
   unusedIndexThreshold: 0, // u00edndices con 0 usos
   // Umbral para considerar crear u00edndices

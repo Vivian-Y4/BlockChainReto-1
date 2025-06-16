@@ -8,7 +8,7 @@ const Admin = require('../models/Admin');
 async function createAdmin() {
   try {
     // Conectar a MongoDB
-    await mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/voting-platform', {
+    await mongoose.connect(process.env.MONGO_URI || 'mongodb+srv://nateravivi:<db_password>@cluster0.vrk8zps.mongodb.net/', {
       // Las siguientes opciones ya no son necesarias en Mongoose 6+, pero no afectan si las dejas
       useNewUrlParser: true,
       useUnifiedTopology: true

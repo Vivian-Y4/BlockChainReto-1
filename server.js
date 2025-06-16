@@ -22,7 +22,7 @@ app.use(cors({
 app.use(express.json());
 
 // MongoDB Connection
-mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/voting-platform', {
+mongoose.connect(process.env.MONGO_URI || 'mongodb+srv://nateravivi:<db_password>@cluster0.vrk8zps.mongodb.net/', {
   useNewUrlParser: true,
   useUnifiedTopology: true
 })
