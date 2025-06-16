@@ -23,7 +23,85 @@ import StatsDashboard from "./stats/StatsDashboard"
 import axios from "axios"
 import AssignTokens from './AssignTokens';
 
+// Traducción de acciones a español
+function accionEnEspanol(action) {
+  const diccionario = {
+    'election_create': 'Elección creada',
+    'election_update': 'Elección actualizada',
+    'election_delete': 'Elección eliminada',
+    'election_activate': 'Elección activada',
+    'election_deactivate': 'Elección desactivada',
+    'election_finalize': 'Elección finalizada',
+    'election_publish_results': 'Resultados publicados',
+    'candidate_add': 'Candidato agregado',
+    'candidate_update': 'Candidato actualizado',
+    'candidate_remove': 'Candidato eliminado',
+    'voter_register': 'Votante registrado',
+    'voter_verify': 'Votante verificado',
+    'voter_revoke': 'Verificación de votante revocada',
+    'voters_import': 'Importación de votantes',
+    'voter_update': 'Votante actualizado',
+    'admin_create': 'Administrador creado',
+    'admin_update': 'Administrador actualizado',
+    'admin_delete': 'Administrador eliminado',
+    'admin_login': 'Inicio de sesión admin',
+    'admin_logout': 'Cierre de sesión admin',
+    'admin_permission_change': 'Permisos de administrador cambiados',
+    'system_backup': 'Respaldo del sistema',
+    'system_restore': 'Restauración del sistema',
+    'system_config_change': 'Configuración del sistema cambiada',
+    'blockchain_interaction': 'Interacción con blockchain',
+  };
+  return diccionario[action] || action.replace(/_/g, ' ').toUpperCase();
+}
+
+// Traducción de operaciones a español
+function operacionEnEspanol(operacion) {
+  const diccionario = {
+    'deploy': 'Despliegue',
+    'sync_results': 'Sincronización de resultados',
+    'publish': 'Publicación',
+    'create': 'Creación',
+    'update': 'Actualización',
+    'delete': 'Eliminación',
+    'activate': 'Activación',
+    'deactivate': 'Desactivación',
+  };
+  return diccionario[operacion] || operacion;
+}
+
 const AdminDashboard = () => {
+  // Estado para logs de actividad
+  const [activityLogs, setActivityLogs] = useState([])
+  const [activityLoading, setActivityLoading] = useState(false)
+  const [activityError, setActivityError] = useState("")
+
+  // Fetch logs de actividad recientes
+  const fetchActivityLogs = useCallback(async () => {
+    setActivityLoading(true)
+    setActivityError("")
+    try {
+      const token = localStorage.getItem("adminToken")
+      const res = await axios.get("/api/admin/activity?limit=5", {
+        headers: { 'x-auth-token': token },
+      })
+      setActivityLogs(Array.isArray(res.data.data) ? res.data.data : [])
+      // Solo ponemos error si la respuesta no es exitosa
+      if (!res.data.success) {
+        setActivityError("No se pudo cargar la actividad reciente")
+      }
+    } catch (error) {
+      setActivityError("No se pudo cargar la actividad reciente")
+      setActivityLogs([])
+    } finally {
+      setActivityLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    fetchActivityLogs()
+  }, [fetchActivityLogs])
+
   useEffect(() => {
     const handleLogout = () => {
       navigator.sendBeacon('/api/admin/logout');
@@ -479,20 +557,47 @@ const AdminDashboard = () => {
             <Card.Body>
               <div className="ps-2">
                 <div className="activity-stream">
-                  {/* En una aplicación real, obtendrías esto de un registro de auditoría */}
-                  <div className="activity-item d-flex align-items-start">
-                    <div className="activity-icon me-3">
-                      <i className="fas fa-check-circle text-success"></i>
+                  {activityLoading ? (
+                    <div className="text-center my-3">
+                      <Spinner animation="border" size="sm" /> Cargando actividad...
                     </div>
-                    <div className="flex-grow-1">
-                      <div className="d-flex justify-content-between">
-                        <strong>Elección creada</strong>
-                        <small className="text-muted">hace 2 horas</small>
+                  ) : activityLogs.length === 0 ? (
+                    <div className="text-muted">No hay actividad reciente.</div>
+                  ) : activityError ? (
+                    <Alert variant="danger">{activityError}</Alert>
+                  ) : (
+                    activityLogs.map((log) => (
+                      <div className="activity-item d-flex align-items-start" key={log._id}>
+                        <div className="activity-icon me-3">
+                          <i className={
+                            log.action.includes('create') ? "fas fa-plus-circle text-primary" :
+                            log.action.includes('update') ? "fas fa-edit text-warning" :
+                            log.action.includes('delete') ? "fas fa-trash-alt text-danger" :
+                            log.action.includes('finalize') ? "fas fa-flag-checkered text-success" :
+                            "fas fa-check-circle text-secondary"
+                          }></i>
+                        </div>
+                        <div className="flex-grow-1">
+                          <div className="d-flex justify-content-between">
+                            <strong>{accionEnEspanol(log.action)}</strong>
+                            <small className="text-muted">{formatTimestamp(log.timestamp)}</small>
+                          </div>
+                          <p className="mb-0">
+                            {log.details?.method ? (
+                              <>
+                                {log.details.method} {log.details.path}
+                              </>
+                            ) : log.resource?.name ? (
+                              <>Recurso: {log.resource.name}</>
+                            ) : null}
+                          </p>
+                          {log.details?.operation && (
+                            <small className="text-muted">Operación: {operacionEnEspanol(log.details.operation)}</small>
+                          )}
+                        </div>
                       </div>
-                      <p className="mb-0">Nueva elección "Presupuesto Municipal 2025" fue creada</p>
-                    </div>
-                  </div>
-                  {/* ...más actividades de ejemplo o reales... */}
+                    ))
+                  )}
                 </div>
               </div>
             </Card.Body>

@@ -19,7 +19,7 @@ const ElectionDetails = () => {
       setLoading(true);
       
       // Fetching from API
-      const response = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/api/elections/${id}`);
+      const response = await fetch(`${process.env.REACT_APP_API_URL}/api/elections/${id}`);
       const data = await response.json();
       
       if (!data.success) {
@@ -43,7 +43,7 @@ const ElectionDetails = () => {
       const token = localStorage.getItem('auth_token');
       
       const response = await fetch(
-        `${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/api/voters/status/${id}`,
+        `${process.env.REACT_APP_API_URL}/api/voters/status/${id}`,
         {
           headers: {
             'x-auth-token': token

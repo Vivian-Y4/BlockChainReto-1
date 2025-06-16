@@ -23,7 +23,7 @@ const ElectionResults = () => {
       setElectionState(updateLoadingState(electionState, { loading: true }));
       setResultsState(updateLoadingState(resultsState, { loading: true }));
       
-      const apiUrl = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+      const apiUrl = process.env.REACT_APP_API_URL;
       if (!validateApiUrl(apiUrl)) {
         throw new Error('URL de API inválida');
       }

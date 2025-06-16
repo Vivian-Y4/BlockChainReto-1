@@ -32,6 +32,8 @@ const AppNavbar = () => {
           <Nav className="me-auto">
             <Nav.Link as={Link} to="/">{t('navbar.home')}</Nav.Link>
             <Nav.Link as={Link} to="/elections">{t('navbar.elections')}</Nav.Link>
+            <Nav.Link as={Link} to="/about">{t('navbar.about')}</Nav.Link>
+            <Nav.Link as={Link} to="/help">{t('navbar.help')}</Nav.Link>
             {isAdmin && (
               <Nav.Link as={Link} to="/admin">{t('navbar.admin')}</Nav.Link>
             )}

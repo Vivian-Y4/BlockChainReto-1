@@ -1,364 +1,356 @@
-"use client"
+import React, { useState, useEffect, useCallback } from "react";
+import axios from "axios";
+import {
+  Container,
+  Card,
+  Table,
+  Spinner,
+  Alert,
+  Form,
+  Row,
+  Col,
+  InputGroup,
+  Pagination,
+  Badge
+} from "react-bootstrap";
+import { FaSearch } from "react-icons/fa";
 
-import { useState, useEffect, useContext } from "react"
-import { Container, Row, Col, Card, Table, Form, InputGroup, Alert, Spinner, Pagination } from "react-bootstrap"
-import { useNavigate } from "react-router-dom"
-import AdminContext from "../../context/AdminContext"
-import { toast } from "react-toastify"
-import axios from "axios"
+const API_URL = process.env.REACT_APP_API_URL;
+
+const initialFilters = {
+  tipo: "",
+  usuario: "",
+  dateFrom: "",
+  dateTo: ""
+};
+
+const activityTypes = [
+  { value: "", label: "Todos" },
+  { value: "login", label: "Inicio de sesión" },
+  { value: "logout", label: "Cierre de sesión" },
+  { value: "create", label: "Creación" },
+  { value: "update", label: "Actualización" },
+  { value: "delete", label: "Eliminación" }
+];
+
+const formatDate = (dateStr) => {
+  if (!dateStr) return "-";
+  try {
+    const date = new Date(dateStr);
+    return date.toLocaleString("es-ES", {
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit"
+    });
+  } catch (error) {
+    console.error("Error formatting date:", error);
+    return "-";
+  }
+};
+
+const getActivityBadgeClass = (type) => {
+  switch (type) {
+    case "login":
+      return "bg-success";
+    case "logout":
+      return "bg-secondary";
+    case "create":
+      return "bg-primary";
+    case "update":
+      return "bg-warning text-dark";
+    case "delete":
+      return "bg-danger";
+    default:
+      return "bg-info";
+  }
+};
+
+const validateDates = (dateFrom, dateTo) => {
+  if (dateFrom && dateTo) {
+    const fromDate = new Date(dateFrom);
+    const toDate = new Date(dateTo);
+    return fromDate <= toDate;
+  }
+  return true;
+};
 
 const ActivityLog = () => {
-  const [activities, setActivities] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState("")
-  const [searchTerm, setSearchTerm] = useState("")
-  const [currentPage, setCurrentPage] = useState(1)
-  const [totalPages, setTotalPages] = useState(1)
-  const [filters, setFilters] = useState({
-    type: "all",
-    dateFrom: "",
-    dateTo: "",
-  })
+  const [logs, setLogs] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [filters, setFilters] = useState(initialFilters);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [page, setPage] = useState(1);
+  const [pages, setPages] = useState(1);
+  const [total, setTotal] = useState(0);
+  const [dateError, setDateError] = useState("");
+  const limit = 10;
 
-  const { isAdminAuthenticated, adminPermissions } = useContext(AdminContext)
-  const navigate = useNavigate()
-  const itemsPerPage = 10
-
-  // Verificar autenticación y permisos
-  useEffect(() => {
-    if (!isAdminAuthenticated) {
-      navigate("/admin/login")
-      return
+  const fetchLogs = useCallback(async () => {
+    if (!validateDates(filters.dateFrom, filters.dateTo)) {
+      setDateError("La fecha 'Desde' no puede ser mayor que la fecha 'Hasta'");
+      return;
     }
+    setDateError("");
 
-    if (!adminPermissions || !adminPermissions.canViewActivity) {
-      toast.error("No tienes permisos para ver el registro de actividad")
-      navigate("/admin")
-      return
-    }
-
-    fetchActivities()
-  }, [isAdminAuthenticated, adminPermissions, navigate, currentPage, filters])
-
-  // Cargar actividades
-  const fetchActivities = async () => {
+    setLoading(true);
+    setError("");
     try {
-      setLoading(true)
-      setError("")
-
-      const apiUrl = process.env.REACT_APP_API_URL || "http://localhost:5000"
-      const token = localStorage.getItem("adminToken")
-
-      // Construir parámetros de consulta
-      let queryParams = `?page=${currentPage}&limit=${itemsPerPage}`
-      if (filters.type !== "all") queryParams += `&type=${filters.type}`
-      if (filters.dateFrom) queryParams += `&dateFrom=${filters.dateFrom}`
-      if (filters.dateTo) queryParams += `&dateTo=${filters.dateTo}`
-
-      const response = await axios.get(`${apiUrl}/api/admin/activity${queryParams}`, {
-        headers: {
-          "x-auth-token": token,
-        },
-      })
-
-      // Si no hay API real, simulamos datos para la interfaz
-      if (!response.data) {
-        simulateActivityData()
-        return
+      const token = localStorage.getItem("adminToken");
+      if (!token) {
+        throw new Error("No se encontró token de autenticación");
       }
 
-      if (response.data.success) {
-        setActivities(response.data.activities || [])
-        setTotalPages(response.data.totalPages || 1)
-      } else {
-        throw new Error(response.data.message || "Error al cargar actividades")
+      const params = {
+        limit,
+        page,
+        ...(filters.tipo && { action: filters.tipo }),
+        ...(filters.usuario && { userId: filters.usuario }),
+        ...(filters.dateFrom && { startDate: filters.dateFrom }),
+        ...(filters.dateTo && { endDate: filters.dateTo })
+      };
+
+      const res = await axios.get(`${API_URL}/api/admin/activity`, {
+        headers: { "x-auth-token": token },
+        params
+      });
+
+      if (res.data?.success === false) {
+        throw new Error(res.data.message || "Error en la respuesta del servidor");
       }
-    } catch (error) {
-      console.error("Error fetching activities:", error)
-      setError("Error al cargar el registro de actividad")
-      // Simulamos datos para la interfaz si hay error
-      simulateActivityData()
+
+      setLogs(res.data?.data || []);
+      setPages(res.data?.pages || 1);
+      setTotal(res.data?.total || 0);
+    } catch (err) {
+      const errorMessage = err.response?.data?.message || 
+                         err.message || 
+                         "Error al cargar el registro de actividad";
+      setError(errorMessage);
+      setLogs([]);
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  }, [filters, page]);
 
-  // Simular datos de actividad para la interfaz
-  const simulateActivityData = () => {
-    const types = ["login", "election_created", "election_ended", "vote_cast", "candidate_added", "voter_registered"]
-    const users = ["admin", "katriel", "voter1", "voter2"]
+  useEffect(() => {
+    fetchLogs();
+  }, [fetchLogs]);
 
-    const simulatedActivities = Array.from({ length: 20 }, (_, i) => {
-      const type = types[Math.floor(Math.random() * types.length)]
-      const user = users[Math.floor(Math.random() * users.length)]
-      const daysAgo = Math.floor(Math.random() * 30)
-      const date = new Date()
-      date.setDate(date.getDate() - daysAgo)
-
-      let description = ""
-      switch (type) {
-        case "login":
-          description = `Usuario ${user} inició sesión`
-          break
-        case "election_created":
-          description = `Elección "Elección Municipal ${i + 1}" fue creada`
-          break
-        case "election_ended":
-          description = `Elección "Elección Municipal ${i + 1}" fue finalizada`
-          break
-        case "vote_cast":
-          description = `Voto emitido en la elección "Elección Municipal ${i + 1}"`
-          break
-        case "candidate_added":
-          description = `Candidato "Candidato ${i + 1}" fue añadido a la elección`
-          break
-        case "voter_registered":
-          description = `Votante con cédula 012${Math.floor(10000000 + Math.random() * 90000000)} fue registrado`
-          break
-        default:
-          description = `Actividad del sistema`
-      }
-
-      return {
-        _id: `activity_${i}`,
-        type,
-        user,
-        description,
-        timestamp: date.toISOString(),
-        details: { ip: `192.168.1.${Math.floor(Math.random() * 255)}` },
-      }
-    })
-
-    // Filtrar por tipo si es necesario
-    let filtered = simulatedActivities
-    if (filters.type !== "all") {
-      filtered = filtered.filter((a) => a.type === filters.type)
-    }
-
-    // Filtrar por fecha
-    if (filters.dateFrom) {
-      const fromDate = new Date(filters.dateFrom)
-      filtered = filtered.filter((a) => new Date(a.timestamp) >= fromDate)
-    }
-
-    if (filters.dateTo) {
-      const toDate = new Date(filters.dateTo)
-      toDate.setHours(23, 59, 59, 999) // Final del día
-      filtered = filtered.filter((a) => new Date(a.timestamp) <= toDate)
-    }
-
-    // Ordenar por fecha (más reciente primero)
-    filtered.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
-
-    // Paginación
-    const start = (currentPage - 1) * itemsPerPage
-    const end = start + itemsPerPage
-    const paginatedActivities = filtered.slice(start, end)
-
-    setActivities(paginatedActivities)
-    setTotalPages(Math.ceil(filtered.length / itemsPerPage))
-  }
-
-  // Manejar cambio de filtros
   const handleFilterChange = (e) => {
-    const { name, value } = e.target
-    setFilters({
-      ...filters,
-      [name]: value,
-    })
-    setCurrentPage(1) // Resetear a la primera página al cambiar filtros
-  }
+    const { name, value } = e.target;
+    setFilters(prev => ({ ...prev, [name]: value }));
+  };
 
-  // Aplicar filtros
   const applyFilters = () => {
-    setCurrentPage(1)
-    fetchActivities()
-  }
+    setPage(1);
+    fetchLogs();
+  };
 
-  // Resetear filtros
   const resetFilters = () => {
-    setFilters({
-      type: "all",
-      dateFrom: "",
-      dateTo: "",
-    })
-    setCurrentPage(1)
-  }
+    setFilters(initialFilters);
+    setPage(1);
+    setDateError("");
+  };
 
-  // Filtrar actividades según término de búsqueda
-  const filteredActivities = activities.filter(
-    (activity) =>
-      activity.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      activity.user?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      activity.type?.toLowerCase().includes(searchTerm.toLowerCase()),
-  )
+  const filteredLogs = logs.filter((log) => {
+    if (!searchTerm) return true;
+    const searchLower = searchTerm.toLowerCase();
+    
+    return (
+      (log.action?.toLowerCase().includes(searchLower)) ||
+      (log.user?.username?.toLowerCase().includes(searchLower)) ||
+      (log.user?.name?.toLowerCase().includes(searchLower)) ||
+      (log.details?.descripcion?.toLowerCase().includes(searchLower)) ||
+      (log.details?.description?.toLowerCase().includes(searchLower)) ||
+      (typeof log.details === 'string' && log.details.toLowerCase().includes(searchLower)) ||
+      (log.metadata?.ip?.includes(searchTerm)) // IP no se convierte a minúsculas
+    );
+  });
 
-  // Obtener clase de badge según tipo de actividad
-  const getActivityBadgeClass = (type) => {
-    switch (type) {
-      case "login":
-        return "bg-info"
-      case "election_created":
-        return "bg-success"
-      case "election_ended":
-        return "bg-warning"
-      case "vote_cast":
-        return "bg-primary"
-      case "candidate_added":
-        return "bg-secondary"
-      case "voter_registered":
-        return "bg-dark"
-      default:
-        return "bg-light text-dark"
-    }
-  }
-
-  // Formatear fecha
-  const formatDate = (dateString) => {
-    const options = {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    }
-    return new Date(dateString).toLocaleDateString(undefined, options)
-  }
-
-  // Renderizar paginación
   const renderPagination = () => {
-    if (totalPages <= 1) return null
+    if (pages <= 1) return null;
 
-    const items = []
-    const maxVisiblePages = 5
+    const visiblePages = 5;
+    let startPage = Math.max(1, page - Math.floor(visiblePages / 2));
+    let endPage = Math.min(pages, startPage + visiblePages - 1);
 
-    // Botón "Anterior"
-    items.push(
-      <Pagination.Prev
-        key="prev"
-        onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
-        disabled={currentPage === 1}
-      />,
-    )
-
-    // Determinar rango de páginas a mostrar
-    let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2))
-    const endPage = Math.min(totalPages, startPage + maxVisiblePages - 1)
-
-    // Ajustar si estamos cerca del final
-    if (endPage - startPage + 1 < maxVisiblePages) {
-      startPage = Math.max(1, endPage - maxVisiblePages + 1)
+    if (endPage - startPage + 1 < visiblePages) {
+      startPage = Math.max(1, endPage - visiblePages + 1);
     }
+
+    const items = [];
+    
+    // Botón Anterior
+    items.push(
+      <Pagination.Prev 
+        key="prev" 
+        onClick={() => setPage(p => Math.max(1, p - 1))} 
+        disabled={page === 1} 
+      />
+    );
 
     // Primera página y elipsis si es necesario
     if (startPage > 1) {
       items.push(
-        <Pagination.Item key={1} onClick={() => setCurrentPage(1)}>
+        <Pagination.Item key={1} onClick={() => setPage(1)}>
           1
-        </Pagination.Item>,
-      )
+        </Pagination.Item>
+      );
       if (startPage > 2) {
-        items.push(<Pagination.Ellipsis key="ellipsis-start" disabled />)
+        items.push(<Pagination.Ellipsis key="start-ellipsis" disabled />);
       }
     }
 
-    // Páginas numeradas
+    // Páginas visibles
     for (let i = startPage; i <= endPage; i++) {
       items.push(
-        <Pagination.Item key={i} active={i === currentPage} onClick={() => setCurrentPage(i)}>
+        <Pagination.Item 
+          key={i} 
+          active={i === page} 
+          onClick={() => setPage(i)}
+        >
           {i}
-        </Pagination.Item>,
-      )
+        </Pagination.Item>
+      );
     }
 
     // Última página y elipsis si es necesario
-    if (endPage < totalPages) {
-      if (endPage < totalPages - 1) {
-        items.push(<Pagination.Ellipsis key="ellipsis-end" disabled />)
+    if (endPage < pages) {
+      if (endPage < pages - 1) {
+        items.push(<Pagination.Ellipsis key="end-ellipsis" disabled />);
       }
       items.push(
-        <Pagination.Item key={totalPages} onClick={() => setCurrentPage(totalPages)}>
-          {totalPages}
-        </Pagination.Item>,
-      )
+        <Pagination.Item key={pages} onClick={() => setPage(pages)}>
+          {pages}
+        </Pagination.Item>
+      );
     }
 
-    // Botón "Siguiente"
+    // Botón Siguiente
     items.push(
-      <Pagination.Next
-        key="next"
-        onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
-        disabled={currentPage === totalPages}
-      />,
-    )
+      <Pagination.Next 
+        key="next" 
+        onClick={() => setPage(p => Math.min(pages, p + 1))} 
+        disabled={page === pages} 
+      />
+    );
 
-    return <Pagination>{items}</Pagination>
-  }
+    return <Pagination className="mb-0">{items}</Pagination>;
+  };
 
   return (
-    <Container className="py-4">
+    <Container className="my-4">
       <h2 className="mb-4">Registro de Actividad</h2>
-
+      
+      {/* Card de Filtros */}
       <Card className="shadow-sm mb-4">
-        <Card.Header>
-          <h5 className="mb-0">Filtros</h5>
-        </Card.Header>
         <Card.Body>
-          <Row>
-            <Col md={4} className="mb-3">
-              <Form.Group>
-                <Form.Label>Tipo de Actividad</Form.Label>
-                <Form.Select name="type" value={filters.type} onChange={handleFilterChange}>
-                  <option value="all">Todos</option>
-                  <option value="login">Inicios de sesión</option>
-                  <option value="election_created">Elecciones creadas</option>
-                  <option value="election_ended">Elecciones finalizadas</option>
-                  <option value="vote_cast">Votos emitidos</option>
-                  <option value="candidate_added">Candidatos añadidos</option>
-                  <option value="voter_registered">Votantes registrados</option>
-                </Form.Select>
-              </Form.Group>
-            </Col>
-            <Col md={4} className="mb-3">
-              <Form.Group>
-                <Form.Label>Desde</Form.Label>
-                <Form.Control type="date" name="dateFrom" value={filters.dateFrom} onChange={handleFilterChange} />
-              </Form.Group>
-            </Col>
-            <Col md={4} className="mb-3">
-              <Form.Group>
-                <Form.Label>Hasta</Form.Label>
-                <Form.Control type="date" name="dateTo" value={filters.dateTo} onChange={handleFilterChange} />
-              </Form.Group>
-            </Col>
-          </Row>
-          <div className="d-flex justify-content-end">
-            <button className="btn btn-outline-secondary me-2" onClick={resetFilters}>
-              Resetear
-            </button>
-            <button className="btn btn-primary" onClick={applyFilters}>
-              Aplicar Filtros
-            </button>
-          </div>
+          <Form>
+            <Row>
+              <Col md={3} className="mb-3">
+                <Form.Group>
+                  <Form.Label>Tipo de actividad</Form.Label>
+                  <Form.Control 
+                    as="select" 
+                    name="tipo" 
+                    value={filters.tipo} 
+                    onChange={handleFilterChange}
+                  >
+                    {activityTypes.map((type) => (
+                      <option key={type.value} value={type.value}>
+                        {type.label}
+                      </option>
+                    ))}
+                  </Form.Control>
+                </Form.Group>
+              </Col>
+              
+              <Col md={3} className="mb-3">
+                <Form.Group>
+                  <Form.Label>Usuario (ID)</Form.Label>
+                  <Form.Control
+                    type="text"
+                    name="usuario"
+                    value={filters.usuario}
+                    onChange={handleFilterChange}
+                    placeholder="ID de usuario"
+                  />
+                </Form.Group>
+              </Col>
+              
+              <Col md={3} className="mb-3">
+                <Form.Group>
+                  <Form.Label>Desde</Form.Label>
+                  <Form.Control 
+                    type="date" 
+                    name="dateFrom" 
+                    value={filters.dateFrom} 
+                    onChange={handleFilterChange} 
+                  />
+                </Form.Group>
+              </Col>
+              
+              <Col md={3} className="mb-3">
+                <Form.Group>
+                  <Form.Label>Hasta</Form.Label>
+                  <Form.Control 
+                    type="date" 
+                    name="dateTo" 
+                    value={filters.dateTo} 
+                    onChange={handleFilterChange} 
+                  />
+                </Form.Group>
+              </Col>
+            </Row>
+            
+            {dateError && <Alert variant="danger" className="mt-2">{dateError}</Alert>}
+            
+            <div className="d-flex justify-content-end">
+              <button 
+                type="button" 
+                className="btn btn-outline-secondary me-2" 
+                onClick={resetFilters}
+                disabled={loading}
+              >
+                Resetear
+              </button>
+              <button 
+                type="button" 
+                className="btn btn-primary" 
+                onClick={applyFilters}
+                disabled={loading || !!dateError}
+              >
+                {loading ? 'Cargando...' : 'Aplicar Filtros'}
+              </button>
+            </div>
+          </Form>
         </Card.Body>
       </Card>
 
+      {/* Card de Resultados */}
       <Card className="shadow-sm mb-4">
         <Card.Header>
           <div className="d-flex justify-content-between align-items-center">
-            <h5 className="mb-0">Actividades</h5>
+            <h5 className="mb-0">
+              Actividades {total > 0 && `(${total} encontradas)`}
+            </h5>
             <InputGroup style={{ width: "300px" }}>
               <InputGroup.Text>
-                <i className="fas fa-search"></i>
+                <FaSearch />
               </InputGroup.Text>
               <Form.Control
                 placeholder="Buscar..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
+                disabled={loading}
               />
             </InputGroup>
           </div>
         </Card.Header>
+        
         <Card.Body>
           {error && <Alert variant="danger">{error}</Alert>}
 
@@ -368,36 +360,50 @@ const ActivityLog = () => {
                 <span className="visually-hidden">Cargando...</span>
               </Spinner>
             </div>
-          ) : filteredActivities.length > 0 ? (
+          ) : filteredLogs.length > 0 ? (
             <>
-              <Table responsive hover>
-                <thead>
-                  <tr>
-                    <th>Fecha</th>
-                    <th>Tipo</th>
-                    <th>Usuario</th>
-                    <th>Descripción</th>
-                    <th>IP</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredActivities.map((activity) => (
-                    <tr key={activity._id}>
-                      <td>{formatDate(activity.timestamp)}</td>
-                      <td>
-                        <span className={`badge ${getActivityBadgeClass(activity.type)}`}>
-                          {activity.type.replace("_", " ")}
-                        </span>
-                      </td>
-                      <td>{activity.user}</td>
-                      <td>{activity.description}</td>
-                      <td>{activity.details?.ip || "-"}</td>
+              <div className="table-responsive">
+                <Table hover>
+                  <thead>
+                    <tr>
+                      <th>Fecha</th>
+                      <th>Tipo</th>
+                      <th>Usuario</th>
+                      <th>Descripción</th>
+                      <th>IP</th>
                     </tr>
-                  ))}
-                </tbody>
-              </Table>
-
-              <div className="d-flex justify-content-center mt-4">{renderPagination()}</div>
+                  </thead>
+                  <tbody>
+                    {filteredLogs.map((log) => (
+                      <tr key={log._id}>
+                        <td>{formatDate(log.timestamp)}</td>
+                        <td>
+                          <Badge pill className={getActivityBadgeClass(log.action)}>
+                            {log.action ? log.action.replace(/_/g, " ") : "-"}
+                          </Badge>
+                        </td>
+                        <td>
+                          {log.user?.name || log.user?.username || "-"}
+                          {log.user?.id && ` (${log.user.id})`}
+                        </td>
+                        <td>
+                          {log.details?.descripcion || 
+                           log.details?.description || 
+                           log.details || "-"}
+                        </td>
+                        <td>{log.metadata?.ip || "-"}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </Table>
+              </div>
+              
+              <div className="d-flex justify-content-between align-items-center mt-3">
+                <div>
+                  Página {page} de {pages}
+                </div>
+                {renderPagination()}
+              </div>
             </>
           ) : (
             <Alert variant="info">
@@ -407,7 +413,7 @@ const ActivityLog = () => {
         </Card.Body>
       </Card>
     </Container>
-  )
-}
+  );
+};
 
-export default ActivityLog
+export default ActivityLog;

@@ -1,6 +1,7 @@
 import React from 'react';
 import { Container } from 'react-bootstrap';
 import { useTranslation } from 'react-i18next';
+import { Link } from 'react-router-dom';
 
 const Footer = () => {
   const { t } = useTranslation();
@@ -17,10 +18,10 @@ const Footer = () => {
           <div className="col-md-3">
             <h5>{t('footer.links')}</h5>
             <ul className="list-unstyled">
-              <li><a href="/" className="text-white">{t('navbar.home')}</a></li>
-              <li><a href="/elections" className="text-white">{t('navbar.elections')}</a></li>
-              <li><a href="/about" className="text-white">About</a></li>
-              <li><a href="/help" className="text-white">Help</a></li>
+              <li><Link to="/" className="text-white">{t('navbar.home')}</Link></li>
+              <li><Link to="/elections" className="text-white">{t('navbar.elections')}</Link></li>
+              <li><Link to="/about" className="text-white">{t('navbar.about')}</Link></li>
+              <li><Link to="/help" className="text-white">{t('navbar.help')}</Link></li>
             </ul>
           </div>
           <div className="col-md-3">

@@ -6,6 +6,8 @@ import { toast } from 'react-toastify';
 // Import components
 import Navbar from './components/layout/Navbar';
 import Home from './components/pages/Home';
+import About from './components/pages/About';
+import Help from './components/pages/Help';
 import ElectionList from './components/elections/ElectionList';
 import ElectionDetails from './components/elections/ElectionDetails';
 import CreateElection from './components/admin/CreateElection';
@@ -183,6 +185,8 @@ function App() {
               <Route path="/elections" element={<ElectionList />} />
               <Route path="/elections/:id" element={<ElectionDetails />} />
               <Route path="/elections/:id/results" element={<ElectionResults />} />
+              <Route path="/about" element={<About />} />
+              <Route path="/help" element={<Help />} />
               {/* Ruta protegida para votantes */}
               <Route path="/elections/:id/vote" element={
                 <ProtectedRoute>

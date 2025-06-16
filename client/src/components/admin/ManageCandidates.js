@@ -49,7 +49,7 @@ const ManageCandidates = () => {
       setLoading(true);
       setError('');
       const res = await fetch(
-        `${process.env.REACT_APP_API_URL || 'http://localhost:3333'}/api/admin/elections`,
+        `${process.env.REACT_APP_API_URL}/api/admin/elections`,
         {
           headers: { 'x-auth-token': localStorage.getItem('adminToken') }
         }
@@ -72,7 +72,7 @@ const ManageCandidates = () => {
       setLoading(true);
       setError('');
       const res = await fetch(
-        `${process.env.REACT_APP_API_URL || 'http://localhost:3333'}/api/admin/elections/${electionId}/candidates`,
+        `${process.env.REACT_APP_API_URL}/api/admin/elections/${electionId}/candidates`,
         {
           headers: { 'x-auth-token': localStorage.getItem('adminToken') }
         }
@@ -101,7 +101,7 @@ const ManageCandidates = () => {
     try {
       setActionLoading(true);
       const response = await fetch(
-        `${process.env.REACT_APP_API_URL || 'http://localhost:3333'}/api/admin/candidates`,
+        `${process.env.REACT_APP_API_URL}/api/admin/candidates`,
         {
           method: 'POST',
           headers: {
@@ -141,7 +141,7 @@ const ManageCandidates = () => {
     try {
       setActionLoading(true);
       const response = await fetch(
-        `${process.env.REACT_APP_API_URL || 'http://localhost:3333'}/api/admin/candidates/${candidateToRemove._id}`,
+        `${process.env.REACT_APP_API_URL}/api/admin/candidates/${candidateToRemove._id}`,
         {
           method: 'DELETE',
           headers: { 'x-auth-token': localStorage.getItem('adminToken') }

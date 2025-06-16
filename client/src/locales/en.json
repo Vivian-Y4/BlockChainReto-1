@@ -6,6 +6,8 @@
   "navbar": {
     "home": "Home",
     "elections": "Elections",
+    "about": "About",
+    "help": "Help",
     "admin": "Admin Dashboard",
     "wallet": "Wallet",
     "connect": "Connect Wallet",

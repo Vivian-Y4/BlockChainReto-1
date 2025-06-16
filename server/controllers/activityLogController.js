@@ -9,34 +9,51 @@ const { AppError } = require('../middlewares/errorHandler');
 const logActivity = async (req, res, next) => {
   try {
     const { action, resource, details, changes, metadata } = req.body;
-    
+
     // Obtener información del usuario desde el middleware de autenticación
     const user = {
-      id: req.user._id,
+      id: req.user?._id,
       model: 'Admin',
-      username: req.user.username,
-      name: req.user.name || req.user.username
+      username: req.user?.username,
+      name: req.user?.name || req.user?.username
     };
-    
+
+    // Validaciones básicas
+    if (!action) {
+      return next(new AppError('El campo "action" es requerido para el log de actividad.', 400));
+    }
+    if (!resource || !resource.type) {
+      return next(new AppError('El campo "resource.type" es requerido para el log de actividad.', 400));
+    }
+    if (!user.id || !user.username) {
+      return next(new AppError('Información de usuario incompleta para el log de actividad.', 400));
+    }
+
     // Crear el registro de actividad
-    const activityLog = await ActivityLog.logActivity({
-      user,
-      action,
-      resource,
-      details,
-      changes,
-      metadata: {
-        ...metadata,
-        ip: req.ip,
-        userAgent: req.headers['user-agent']
-      }
-    });
-    
+    let activityLog;
+    try {
+      activityLog = await ActivityLog.logActivity({
+        user,
+        action,
+        resource,
+        details,
+        changes,
+        metadata: {
+          ...metadata,
+          ip: req.ip,
+          userAgent: req.headers['user-agent']
+        }
+      });
+    } catch (dbError) {
+      console.error('Error guardando log de actividad en la base de datos:', dbError);
+      return next(new AppError('Error guardando log de actividad en la base de datos.', 500));
+    }
     res.status(201).json({
       success: true,
       data: activityLog
     });
   } catch (error) {
+    console.error('Error inesperado en logActivity:', error);
     next(new AppError(`Error al registrar actividad: ${error.message}`, 500));
   }
 };

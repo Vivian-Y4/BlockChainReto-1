@@ -201,6 +201,9 @@ const getElection = async (req, res, next) => {
  * @access  Privado (Admin)
  */
 const createElection = async (req, res, next) => {
+  // Soporte para provincia
+  const { province, level } = req.body;
+
   try {
     const { provider, contractABI, contractAddress } = setupProvider();
     
@@ -229,12 +232,18 @@ const createElection = async (req, res, next) => {
     const event = receipt.events.find(e => e.event === 'ElectionCreated');
     const electionId = event.args.electionId.toNumber();
     
+    // Validación de provincia para elecciones regionales
+    if ((level === 'municipal' || level === 'senatorial' || level === 'diputados') && !province) {
+      return next(new AppError('Debe especificar la provincia para elecciones regionales o municipales.', 400));
+    }
+    
     // Guardar metadata adicional en MongoDB
     if (metadata) {
       const electionMeta = new ElectionMeta({
         electionId,
         ...metadata,
-        createdBy: req.user.address
+        createdBy: (req.user && (req.user.id || req.user._id)) || null,
+        location: (level === 'municipal' || level === 'senatorial' || level === 'diputados') ? (province || '').trim() : 'nacional'
       });
       await electionMeta.save();
     }

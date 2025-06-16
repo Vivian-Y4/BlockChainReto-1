@@ -105,6 +105,12 @@ const voterSchema = new mongoose.Schema({
     type: String,
     trim: true
   },
+  province: {
+    type: String,
+    trim: true,
+    index: true,
+    default: null
+  },
   country: {
     type: String,
     trim: true,

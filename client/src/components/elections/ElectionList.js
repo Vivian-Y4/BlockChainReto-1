@@ -19,20 +19,27 @@ const ElectionList = () => {
   const fetchElections = async () => {
     try {
       setLoading(true);
+      setError('');
       
-      // If using the API approach
-      const response = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/api/elections`);
+      console.log('Fetching elections from:', `${process.env.REACT_APP_API_URL}/api/elections`);
+      const response = await fetch(`${process.env.REACT_APP_API_URL}/api/elections`);
+      console.log('Response status:', response.status);
       const data = await response.json();
+      console.log('Response data:', data);
       
-      if (!data.success) {
+      if (!response.ok || !data.success) {
         throw new Error(data.message || 'Failed to fetch elections');
       }
       
-      setElections(data.elections || []);
-      setError('');
+      if (data.elections.length === 0) {
+        setElections([]);
+        setError('No elections available at the moment.');
+      } else {
+        setElections(data.elections);
+      }
     } catch (error) {
       console.error('Error fetching elections:', error);
-      setError('Failed to load elections. Please try again later.');
+      setError('An error occurred while loading elections. Please try again later.');
     } finally {
       setLoading(false);
     }

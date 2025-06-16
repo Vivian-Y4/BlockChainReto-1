@@ -20,6 +20,7 @@ const ElectionMetaSchema = new mongoose.Schema({
     enum: ['political', 'corporate', 'community', 'other'],
     default: 'other'
   },
+  // Provincia para elecciones regionales/municipales (o 'nacional' para nacionales)
   location: {
     type: String
   },

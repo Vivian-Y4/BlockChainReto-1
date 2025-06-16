@@ -2,28 +2,30 @@ import React from 'react';
 import { Container, Card, ListGroup } from 'react-bootstrap';
 
 const Activity = () => {
-  const activities = [
-    { id: 1, description: 'Created new election "Budget 2025"', time: '2 hours ago' },
-    { id: 2, description: 'Updated candidate list', time: '1 day ago' },
-    // Add more activities here
-  ];
+  // Aquí deberías obtener las actividades reales del backend con useEffect y axios/fetch.
+  // Por ahora, solo mostramos el mensaje si no hay actividades.
+  const activities = [];
 
   return (
     <Container className="my-5">
       <Card className="shadow-sm">
         <Card.Header>
-          <h5>Recent Activities</h5>
+          <h5>Actividad Reciente</h5>
         </Card.Header>
         <Card.Body>
-          <ListGroup variant="flush">
-            {activities.map(activity => (
-              <ListGroup.Item key={activity.id}>
-                <strong>{activity.description}</strong>
-                <br />
-                <small className="text-muted">{activity.time}</small>
-              </ListGroup.Item>
-            ))}
-          </ListGroup>
+          {activities.length === 0 ? (
+            <div className="text-muted">No hay actividad reciente.</div>
+          ) : (
+            <ListGroup variant="flush">
+              {activities.map(activity => (
+                <ListGroup.Item key={activity.id}>
+                  <strong>{activity.description}</strong>
+                  <br />
+                  <small className="text-muted">{activity.time}</small>
+                </ListGroup.Item>
+              ))}
+            </ListGroup>
+          )}
         </Card.Body>
       </Card>
     </Container>

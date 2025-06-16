@@ -3,6 +3,7 @@ import { Container, Card, Form, Button, Row, Col, Alert, Spinner } from 'react-b
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import AuthContext from '../../context/AuthContext';
+import { PROVINCES } from '../../constants/provinces';
 
 const CreateElection = () => {
   const [formData, setFormData] = useState({
@@ -12,7 +13,8 @@ const CreateElection = () => {
     startTime: '',
     endDate: '',
     endTime: '',
-    level: ''
+    level: '',
+    province: ''
   });
 
   const [loading, setLoading] = useState(false);
@@ -57,16 +59,20 @@ const CreateElection = () => {
       setError('Election level is required');
       return false;
     }
+    if (["municipal","senatorial","diputados"].includes((formData.level||'').toLowerCase()) && !formData.province) {
+      setError('Debe seleccionar una provincia para elecciones regionales o municipales');
+      return false;
+    }
     // Calculate timestamps
     const startTimestamp = new Date(`${formData.startDate}T${formData.startTime}`).getTime();
     const endTimestamp = new Date(`${formData.endDate}T${formData.endTime}`).getTime();
     const now = Date.now();
-    if (startTimestamp <= now) {
-      setError('Start time must be in the future');
+    if (startTimestamp < now) {
+      setError('La fecha y hora de inicio no puede ser menor a la fecha y hora actual');
       return false;
     }
     if (endTimestamp <= startTimestamp) {
-      setError('End time must be after start time');
+      setError('La fecha y hora de fin debe ser mayor a la de inicio');
       return false;
     }
     return true;
@@ -94,7 +100,8 @@ const CreateElection = () => {
             description: formData.description.trim(),
             startTime: startTimestamp,
             endTime: endTimestamp,
-            level: formData.level
+            level: formData.level,
+            province: (formData.level === 'municipal' || formData.level === 'senatorial' || formData.level === 'diputados') ? formData.province : undefined
           })
         }
       );
@@ -112,6 +119,9 @@ const CreateElection = () => {
 
   return (
     <Container>
+      {error && (
+        <Alert variant="danger" className="mt-3">{error}</Alert>
+      )}
       <h2 className="mb-4">Crear Nueva Elección</h2>
       <Card className="shadow-sm">
         <Card.Body>
@@ -158,6 +168,7 @@ const CreateElection = () => {
                     name="startDate"
                     value={formData.startDate}
                     onChange={handleInputChange}
+                    min={new Date().toISOString().split('T')[0]}
                     required
                   />
                 </Form.Group>
@@ -184,6 +195,7 @@ const CreateElection = () => {
                     name="endDate"
                     value={formData.endDate}
                     onChange={handleInputChange}
+                    min={formData.startDate || new Date().toISOString().split('T')[0]}
                     required
                   />
                 </Form.Group>
@@ -221,6 +233,27 @@ const CreateElection = () => {
                 </Form.Group>
               </Col>
             </Row>
+            {['municipal','senatorial','diputados'].includes(formData.level?.toLowerCase()?.trim()) && (
+              <Row className="mb-4">
+                <Col md={12}>
+                  <Form.Group controlId="province">
+                    <Form.Label>Provincia</Form.Label>
+                    <Form.Control
+                      as="select"
+                      name="province"
+                      value={formData.province}
+                      onChange={handleInputChange}
+                      required
+                    >
+                      <option value="">Seleccione una provincia</option>
+                      {PROVINCES.map((prov) => (
+                        <option key={prov} value={prov}>{prov}</option>
+                      ))}
+                    </Form.Control>
+                  </Form.Group>
+                </Col>
+              </Row>
+            )}
             <div className="d-grid gap-2 mt-4">
               <Button
                 type="submit"

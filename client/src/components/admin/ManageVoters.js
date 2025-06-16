@@ -31,7 +31,7 @@ const ManageVoters = () => {
       setError('');
       // Fetch election details
       const electionResponse = await fetch(
-        `${process.env.REACT_APP_API_URL || 'http://localhost:3333'}/api/elections/${electionId}`,
+        `${process.env.REACT_APP_API_URL}/api/elections/${electionId}`,
         {
           headers: {
             'x-auth-token': localStorage.getItem('adminToken')
@@ -45,7 +45,7 @@ const ManageVoters = () => {
       setElection(electionData.election);
       // Fetch voters for this election
       const votersResponse = await fetch(
-        `${process.env.REACT_APP_API_URL || 'http://localhost:3333'}/api/elections/${electionId}/voters`,
+        `${process.env.REACT_APP_API_URL}/api/elections/${electionId}/voters`,
         {
           headers: {
             'x-auth-token': localStorage.getItem('adminToken')
@@ -97,7 +97,7 @@ const ManageVoters = () => {
     try {
       setActionLoading(true);
       const response = await fetch(
-        `${process.env.REACT_APP_API_URL || 'http://localhost:3333'}/api/elections/${electionId}/voters`,
+        `${process.env.REACT_APP_API_URL}/api/elections/${electionId}/voters`,
         {
           method: 'POST',
           headers: {
@@ -140,7 +140,7 @@ const ManageVoters = () => {
     try {
       setActionLoading(true);
       const response = await fetch(
-        `${process.env.REACT_APP_API_URL || 'http://localhost:3333'}/api/elections/${electionId}/voters/bulk`,
+        `${process.env.REACT_APP_API_URL}/api/elections/${electionId}/voters/bulk`,
         {
           method: 'POST',
           headers: {
@@ -177,7 +177,7 @@ const ManageVoters = () => {
     try {
       setActionLoading(true);
       const response = await fetch(
-        `${process.env.REACT_APP_API_URL || 'http://localhost:3333'}/api/elections/${electionId}/voters/${voterToRemove.address}`,
+        `${process.env.REACT_APP_API_URL}/api/elections/${electionId}/voters/${voterToRemove.address}`,
         {
           method: 'DELETE',
           headers: {
