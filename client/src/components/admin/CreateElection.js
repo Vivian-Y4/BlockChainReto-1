@@ -14,8 +14,19 @@ const CreateElection = () => {
     endDate: '',
     endTime: '',
     level: '',
-    province: ''
+    province: '',
+    showProvince: false
   });
+
+  useEffect(() => {
+    // Actualizar showProvince cuando cambia el nivel
+    setFormData(prev => ({
+      ...prev,
+      showProvince: ['municipal', 'senatorial', 'diputados'].includes((prev.level || '').toLowerCase())
+    }));
+  }, [formData.level]);
+
+  // ... resto del código ...
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -59,7 +70,8 @@ const CreateElection = () => {
       setError('Election level is required');
       return false;
     }
-    if (["municipal","senatorial","diputados"].includes((formData.level||'').toLowerCase()) && !formData.province) {
+    // Validar provincia para elecciones regionales
+    if (formData.showProvince && !formData.province) {
       setError('Debe seleccionar una provincia para elecciones regionales o municipales');
       return false;
     }
@@ -233,7 +245,7 @@ const CreateElection = () => {
                 </Form.Group>
               </Col>
             </Row>
-            {['municipal','senatorial','diputados'].includes(formData.level?.toLowerCase()?.trim()) && (
+            {formData.showProvince && (
               <Row className="mb-4">
                 <Col md={12}>
                   <Form.Group controlId="province">
@@ -244,6 +256,7 @@ const CreateElection = () => {
                       value={formData.province}
                       onChange={handleInputChange}
                       required
+                      disabled={!formData.showProvince}
                     >
                       <option value="">Seleccione una provincia</option>
                       {PROVINCES.map((prov) => (

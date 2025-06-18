@@ -7,6 +7,7 @@ const { AppError } = require('../middlewares/errorHandler');
 const Election = require('../models/Election');
 const Vote = require('../models/Vote');
 const Voter = require('../models/Voter');
+const { validateElectionData, validateCandidateData, validateVoteData } = require('../middlewares/validateData');
 
 /**
  * Configura la conexión al proveedor Ethereum y obtiene el contrato
@@ -205,6 +206,9 @@ const createElection = async (req, res, next) => {
   const { province, level } = req.body;
 
   try {
+    // Validar datos antes de procesar
+    validateElectionData(req, res, next);
+
     const { provider, contractABI, contractAddress } = setupProvider();
     
     // Para operaciones de admin, necesitamos un firmante con clave privada
@@ -236,44 +240,89 @@ const createElection = async (req, res, next) => {
     if ((level === 'municipal' || level === 'senatorial' || level === 'diputados') && !province) {
       return next(new AppError('Debe especificar la provincia para elecciones regionales o municipales.', 400));
     }
-    
-    // Guardar metadata adicional en MongoDB
-    if (metadata) {
-      const electionMeta = new ElectionMeta({
-        electionId,
-        ...metadata,
-        createdBy: (req.user && (req.user.id || req.user._id)) || null,
-        location: (level === 'municipal' || level === 'senatorial' || level === 'diputados') ? (province || '').trim() : 'nacional'
+
+    // Iniciar transacción de MongoDB
+    const session = await mongoose.startSession();
+    session.startTransaction();
+
+    try {
+      // Crear la elección en MongoDB
+      const election = new Election({
+        name: title,
+        title,
+        level,
+        description,
+        startTime,
+        endTime,
+        contractAddress,
+        status: 'active'
       });
-      await electionMeta.save();
-    }
-    
-    // Añadir candidatos
-    for (const candidate of candidates) {
-      await contract.addCandidate(
-        electionId,
-        candidate.name,
-        candidate.description
-      );
-      
-      // Guardar metadata adicional del candidato si existe
-      if (candidate.metadata) {
-        const candidateMeta = new CandidateMeta({
+
+      await election.save({ session });
+
+      // Guardar metadata adicional en MongoDB
+      if (metadata) {
+        const electionMeta = new ElectionMeta({
           electionId,
-          candidateId: candidates.indexOf(candidate),
-          ...candidate.metadata
+          ...metadata,
+          createdBy: (req.user && (req.user.id || req.user._id)) || null,
+          location: (level === 'municipal' || level === 'senatorial' || level === 'diputados') ? (province || '').trim() : 'nacional'
         });
-        await candidateMeta.save();
+        await electionMeta.save({ session });
       }
+
+      // Añadir candidatos
+      if (candidates) {
+        for (const candidate of candidates) {
+          // Crear candidato en MongoDB
+          const candidateDoc = new Candidate({
+            electionId: election._id,
+            name: candidate.name,
+            description: candidate.description,
+            position: candidates.indexOf(candidate),
+            metadata: candidate.metadata
+          });
+          
+          await candidateDoc.save({ session });
+          
+          // Añadir candidato al array de candidatos de la elección
+          election.candidates.push({
+            _id: candidateDoc._id,
+            name: candidate.name,
+            description: candidate.description,
+            votes: 0
+          });
+          
+          // Agregar candidato en el blockchain
+          await contract.addCandidate(
+            electionId,
+            candidate.name,
+            candidate.description
+          );
+        }
+      }
+
+      // Actualizar la elección con los candidatos
+      await election.save({ session });
+
+      // Confirmar transacción
+      await session.commitTransaction();
+      session.endSession();
+
+      res.status(201).json({
+        success: true,
+        message: 'Elección creada exitosamente',
+        electionId,
+        election: election.toObject()
+      });
+    } catch (error) {
+      await session.abortTransaction();
+      session.endSession();
+      throw error;
     }
-    
-    res.status(201).json({
-      success: true,
-      message: 'Elección creada exitosamente',
-      electionId
-    });
   } catch (error) {
-    next(new AppError(`Error al crear elección: ${error.message}`, 500));
+    console.error('Error detallado:', error);
+    next(new AppError(`Error al crear elección: ${error.message}`, 500, error));
   }
 };
 
